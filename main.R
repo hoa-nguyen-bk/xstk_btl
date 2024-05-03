@@ -37,7 +37,7 @@ intel_data_raw <- read.csv(
 )
 # chọn các cột cần sử dụng
 intel_data <- intel_data_raw[,c("Product_Collection","Vertical_Segment","Status","Launch_Date","Lithography",
-                          "Recommended_Customer_Price","nb_of_Cores","nb_of_Threads","Processor_Base_Frequency",
+                          "Recommended_Customer_Price","nb_of_Cores","nb_of_Threads",
                           "Cache","Max_Memory_Size","Max_nb_of_Memory_Channels","Instruction_Set")]
 # in ra bảng thống kê sơ bộ của dữ liệu
 print(summary(intel_data))
@@ -139,10 +139,12 @@ intel_data$Instruction_Set <- na.fill(intel_data$Instruction_Set,"64-bit")   # 6
 ##
 ##############
 
-##
+##KIỂM TRA LẠI DỮ LIỆU
 ##############
 # check xem còn dữ liệu nào thiếu không 
 print(apply(is.na(intel_data),2,sum) )
+# kiểm tra lại số liệu và định dạng
+print(str(intel_data) )
 
 # export result
 ###############
