@@ -1,11 +1,11 @@
 ############################
-###   MY EXAMPLE SCRIPT  ###
+###   MAIN FILE          ###
 ############################
 # Write a comment after one or more hash symbols
 
 ###############
 # Purpose: To demonstrate an example
-# Authors: Hoa
+# Authors: Hoa, Kim Phu
 ###############
 
 # load packages
@@ -13,8 +13,21 @@
 pacman::p_load(
   rio,       # for import/export of files
   here,      # for locating files in my R project
-  tidyverse # for data management and visualization
-)
+  tidyverse, # for data management and visualization
+  stringr,
+  tidyr,
+  dplyr,
+  zoo,
+  Metrics,
+  caret,
+  MASS,
+  ggplot2,
+  reshape2,
+  mltools,
+  DescTools,
+  plotly
+  )
+
 
 # load data 
 ###############
@@ -25,7 +38,7 @@ intel_data_raw <- read.csv(
 # chọn các cột cần sử dụng
 intel_data <- intel_data_raw[,c("Product_Collection","Vertical_Segment","Status","Launch_Date","Lithography",
                           "Recommended_Customer_Price","nb_of_Cores","nb_of_Threads","Processor_Base_Frequency",
-                          "Cache","Instruction_Set","TDP","Max_Memory_Size","Max_nb_of_Memory_Channels","Max_Memory_Bandwidth")]
+                          "Cache","Max_Memory_Size","Max_nb_of_Memory_Channels","Instruction_Set")]
 # in ra bảng thống kê sơ bộ của dữ liệu
 print(summary(intel_data))
 
@@ -50,17 +63,6 @@ intel_data$Max_Memory_Size <- sapply(intel_data$Max_Memory_Size,max_mem_size_cle
 # SẮP XẾP LẠI DATA
 ##############
 
-## MAX MEMORY BANDWIDTH
-##############
-max_memory_bandwidth_clean<- function(mem){
-  return ( as.double(strsplit(mem," ")[[1]][1]) )
-}
-intel_data$Max_Memory_Bandwidth <- sapply(intel_data$Max_Memory_Bandwidth,max_memory_bandwidth_clean)
-for( i in unique(intel_data$Max_nb_of_Memory_Channels) ){
-  fill_value =  median(intel_data[intel_data$Max_nb_of_Memory_Channels==i,'Max_Memory_Bandwidth'],na.rm = TRUE)
-  subset <- intel_data[intel_data$Max_nb_of_Memory_Channels==i,'Max_Memory_Bandwidth']
-  intel_data[intel_data$Max_nb_of_Memory_Channels==i,'Max_Memory_Bandwidth'] = na.fill(subset,fill_value) 
-}
 
 ## PRODUCT COLLECTION
 ##############
@@ -133,24 +135,14 @@ intel_data$Cache_Type <- ifelse(intel_data$Cache_Type == "", "Normal", sub(" ","
 ##############
 intel_data$Instruction_Set <- na.fill(intel_data$Instruction_Set,"64-bit")   # 64-bit là mode value của các loại máy nên ta fill bằng mode
 
-##
-##############
-
 
 ##
 ##############
 
-
 ##
 ##############
-
-
-##
-##############
-
-
-##
-##############
+# check xem còn dữ liệu nào thiếu không 
+print(apply(is.na(intel_data),2,sum) )
 
 # export result
 ###############
