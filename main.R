@@ -36,12 +36,14 @@ intel_data_raw <- read.csv(
   na.strings = c("", " ","   ","N/A","NA") # and process missing
 )
 # chọn các cột cần sử dụng
-intel_data <- intel_data_raw[,c("Product_Collection","Vertical_Segment","Status","Launch_Date","Lithography",
-                          "Recommended_Customer_Price","nb_of_Cores","nb_of_Threads",
+intel_data <- intel_data_raw[,c("Product_Collection","Vertical_Segment","Status","Launch_Date","Lithography"
+                          ,"nb_of_Cores","nb_of_Threads",
                           "Cache","Max_Memory_Size","Max_nb_of_Memory_Channels","Instruction_Set")]
+
+
 # in ra bảng thống kê sơ bộ của dữ liệu
 print(summary(intel_data))
-
+print(skimr::skim(intel_data))
 # XỬ LÝ DỮ LIỆU KHUYỂT
 ###############
 # KIỂM TRA DỮ LIỆU KHUYẾT
@@ -51,12 +53,14 @@ print(apply(is.na(intel_data),2,sum))
 nrow(intel_data[is.na(intel_data$Max_Memory_Size) & is.na(intel_data$Launch_Date),])
 
 intel_data <- intel_data[complete.cases(intel_data$Max_Memory_Size), ]   # drop toàn bộ dòng có N/A của cột này
+
 max_mem_size_clean <- function(size){  
   if(grepl('G',size)){
     return ( as.double(gsub(" GB","",size)) )
   }
   return ( as.double(gsub(" TB","",size)) * 1024 )
 }
+
 # apply hàm để xử lý từng ô dữ liệu: đổi TB về GB và đổi định dạng số 
 intel_data$Max_Memory_Size <- sapply(intel_data$Max_Memory_Size,max_mem_size_clean)     
 
@@ -92,32 +96,12 @@ intel_data$Lithography <-as.double( gsub(" nm$", "", intel_data$Lithography)) # 
 # 1 core thường sẽ có 2 luồng
 intel_data$nb_of_Threads <- ifelse(is.na(intel_data$nb_of_Threads), intel_data$nb_of_Cores * 2, intel_data$nb_of_Threads)
 
-##RECOMMENDED CUSTOMER PRICE
-##############
-recommend_price <- function(price_range) {
-  if(grepl('-', price_range)) {
-    range <- strsplit(price_range, "-")[[1]]
-    return((as.double(range[1]) + as.double(range[2])) / 2)
-  }
-  return (price_range)
-}
-# sửa định dạng chuỗi
-intel_data$Recommended_Customer_Price <- gsub("\\$", "", intel_data$Recommended_Customer_Price) 
-intel_data$Recommended_Customer_Price <- gsub(",", "", intel_data$Recommended_Customer_Price)
-# apply hàm để xử lý số liệu
-intel_data$Recommended_Customer_Price <- sapply(intel_data$Recommended_Customer_Price, recommend_price) 
-intel_data$Recommended_Customer_Price <- as.double(intel_data$Recommended_Customer_Price) 
-intel_data$Recommended_Customer_Price <- log(intel_data$Recommended_Customer_Price) 
-intel_data <- intel_data %>%
-  group_by(Product_Collection) %>%
-  # fill theo dữ liệu từng loại chip theo thứ tự là forward rồi tới backward
-  fill(Recommended_Customer_Price, .direction = "updown")
 
 ##CACHE
 ##############
 Cache_Size_Clean <- function(size){
-  if(grepl('K',size)){
-    return (as.double(gsub(" K","",size)) /1024)
+  if(grepl("K", size)){
+    return (as.double(gsub(" K", "", size)) /1024)
   }
   else{
     return (as.double(gsub(" M","",size)))
@@ -142,11 +126,11 @@ intel_data$Instruction_Set <- na.fill(intel_data$Instruction_Set,"64-bit")   # 6
 ##KIỂM TRA LẠI DỮ LIỆU
 ##############
 # check xem còn dữ liệu nào thiếu không 
-print(apply(is.na(intel_data),2,sum) )
+print(apply(is.na(intel_data), 2, sum))
 # kiểm tra lại số liệu và định dạng
-print(str(intel_data) )
+print(str(intel_data))
 
 # export result
 ###############
-export(intel_data_raw,here("data","clean","my_data.rds"))
+export(intel_data_raw, here("data", "clean", "my_data.rds"))
 
