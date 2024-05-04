@@ -28,12 +28,11 @@ pacman::p_load(
   plotly
   )
 
-
-# load data 
+# load data ----
 ###############
 intel_data_raw <- read.csv(
   "data/Intel_CPUs.csv", 
-  na.strings = c("", " ","   ","N/A","NA") # and process missing
+  na.string = c("", " ","   ","N/A","NA") # and process missing
 )
 # chọn các cột cần sử dụng
 intel_data <- intel_data_raw[,c("Product_Collection","Vertical_Segment","Status","Launch_Date","Lithography",
@@ -42,13 +41,11 @@ intel_data <- intel_data_raw[,c("Product_Collection","Vertical_Segment","Status"
 # in ra bảng thống kê sơ bộ của dữ liệu
 print(summary(intel_data))
 
-# XỬ LÝ DỮ LIỆU KHUYỂT
+# Xử lý dữ liệu khuyết ----
 ###############
 # KIỂM TRA DỮ LIỆU KHUYẾT
 print(apply(is.na(intel_data),2,sum))
 
-#dữ liệu toàn mất đồng loạt nên phải được phải bỏ
-nrow(intel_data[is.na(intel_data$Max_Memory_Size) & is.na(intel_data$Launch_Date),])
 
 intel_data <- intel_data[complete.cases(intel_data$Max_Memory_Size), ]   # drop toàn bộ dòng có N/A của cột này
 max_mem_size_clean <- function(size){  
@@ -136,17 +133,80 @@ intel_data$Cache_Type <- ifelse(intel_data$Cache_Type == "", "Normal", sub(" ","
 intel_data$Instruction_Set <- na.fill(intel_data$Instruction_Set,"64-bit")   # 64-bit là mode value của các loại máy nên ta fill bằng mode
 
 
-##
-##############
 
-##KIỂM TRA LẠI DỮ LIỆU
+
+## Kiểm tra lại dữ liệu ----
 ##############
 # check xem còn dữ liệu nào thiếu không 
 print(apply(is.na(intel_data),2,sum) )
 # kiểm tra lại số liệu và định dạng
 print(str(intel_data) )
+print(summary(intel_data))
+head(intel_data, 10)
 
-# export result
+
+## Thống kê tả ----
+##############
+
+### LÀM RÕ DỮ LIỆU
+##############
+# chia dữ liệu thành 2 loại biến : numeric - định lượng và categorical - định tính
+numerical_cols = c("Launch_Date","Lithography","Recommended_Customer_Price","nb_of_Cores","nb_of_Threads",
+                   "Cache_Size","Max_Memory_Size","Max_nb_of_Memory_Channels","Max_Memory_Bandwidth")
+categorical_cols = c("Product_Collection","Vertical_Segment","Status","Cache_Type","Instruction_Set")
+
+# Xây dựng bảng thống kê
+summary_numeric_table <- data.frame(
+  Staticstic=c("Count", "Mean", "STD", "Min", "First Quantile", "Median", "Third Quantile", "Max")
+)
+for (i in numerical_cols){
+  count <- length(intel_data[[i]])
+  mean<- mean(intel_data[[i]])
+  std <- sd(intel_data[[i]])
+  min <- min(intel_data[[i]])
+  first_quantile <- sapply(intel_data[i], function(x) quantile(x, 0.25) )[[1]]
+  median <- median(intel_data[[i]])
+  third_quantile <- sapply(intel_data[i], function(x) quantile(x, 0.75))[[1]]
+  max <- max(intel_data[[i]])
+  summary_numeric_table <- cbind(summary_numeric_table,new_col=c(count,mean,std,min,first_quantile,median,third_quantile,max))
+}
+colnames(summary_numeric_table) <- c("",numerical_cols)
+
+summary_categorical_table <- data.frame(
+  Staticstic = c("Count","Unique","Mode","Freq")
+)
+for (i in categorical_cols) {
+  count <- length(intel_data[[i]])
+  unique <- length( unique(intel_data[[i]]))
+  mode <- Mode(intel_data[[i]])
+  freq <- attr(mode,"freq")
+  summary_categorical_table <- cbind(summary_categorical_table,new_col=c(count,unique,mode,freq))
+}
+colnames(summary_categorical_table) <- c("",categorical_cols)
+summary_numeric_table
+
+### Vẽ biểu đồ
+##############
+histogram_bplot <- function(intel_data, col, na.rm = T) { 
+  par(mfrow = c(1,2))
+  
+  hist(intel_data[[col]],
+       main = paste("Histogram of", col),
+       xlab = col)
+  
+  boxplot(intel_data[[col]],
+          main = paste("Boxplot of", col),
+          horizontal = T,
+          xlab = col,
+          ylab = "",
+          las = 1)}
+histogram_bplot(intel_data,"Max_Memory_Size")
+histogram_bplot(intel_data,"Lithography")
+histogram_bplot(intel_data,"nb_of_Cores")
+histogram_bplot(intel_data,"nb_of_Threads")
+histogram_bplot(intel_data,"Cache_Size")
+
+## export result ----
 ###############
 export(intel_data_raw,here("data","clean","my_data.rds"))
 
