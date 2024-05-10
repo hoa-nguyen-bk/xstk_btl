@@ -205,6 +205,9 @@ boxplot(intel_data$Max_Memory_Size, main = "Max Memory Size Distribution", xlab 
 hist(intel_data$nb_of_Cores, main = "Number of Cores Distribution", xlab = "Number of Cores", breaks = 20)
 boxplot(intel_data$nb_of_Cores, main = "Number of Cores Distribution", xlab = "Number of Cores")
 
+### Number of Threads
+hist(intel_data$nb_of_Threads, main = "Number of Threads Distribution", xlab = "Number of Threads", breaks = 20)
+boxplot(intel_data$nb_of_Threads, main = "Number of Threads Distribution", xlab = "Number of Threads")
 
 # THỐNG KÊ SUY DIỄN
 ##############
