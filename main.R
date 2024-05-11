@@ -42,6 +42,18 @@ intel_data <- intel_data_raw[,c("Product_Collection","Vertical_Segment","Launch_
                           ,"nb_of_Cores","nb_of_Threads","Processor_Base_Frequency",
                           "Cache","Max_Memory_Size","Max_nb_of_Memory_Channels","Instruction_Set")]
 
+# kiem tra xem co du lieu nao sai don vi, khac ki tu khong
+table(intel_data$Product_Collection) 
+table(intel_data$Vertical_Segment)
+table(intel_data$Launch_Date)
+table(intel_data$Lithography)
+table(intel_data$nb_of_Cores)
+table(intel_data$nb_of_Threads)
+table(intel_data$Processor_Base_Frequency)
+table(intel_data$Max_Memory_Size)
+table(intel_data$Max_nb_of_Memory_Channels)
+table(intel_data$Instruction_Set)
+
 # in ra bảng thống kê sơ bộ của dữ liệu
 print(summary(intel_data))
 
@@ -59,7 +71,7 @@ max_mem_size_clean <- function(size){
   }
   return ( as.double(gsub(" TB","",size)) * 1024 )
 }
-
+  
 # apply hàm để xử lý từng ô dữ liệu: đổi TB về GB và đổi định dạng số 
 intel_data$Max_Memory_Size <- sapply(intel_data$Max_Memory_Size,max_mem_size_clean)     
 
@@ -75,7 +87,7 @@ for (i in product_collect) {
   # nhóm dữ liệu thành các loại dòng chip hiện tại
   intel_data$Product_Collection <- ifelse(grepl(i, intel_data$Product_Collection), i, intel_data$Product_Collection)
 }
-intel_data$Product_Collection <- as.factor(intel_data$Product_Collection)
+intel_data$Product_Collection <- factor(intel_data$Product_Collection, levels = product_collect)
 
 ##LAUNCH DATE
 ##############
@@ -95,7 +107,7 @@ for (i in product_collect) {
   # nhóm dữ liệu thành các loại dòng chip hiện tại
   intel_data$Product_Collection <- ifelse(grepl(i, intel_data$Product_Collection), i, intel_data$Product_Collection)
 }
-intel_data$Product_Collection <- as.factor(intel_data$Product_Collection)
+intel_data$Product_Collection <- factor(intel_data$Product_Collection, levels = unique(intel_data$Product_Collection))
 ##LITHOGRAPHY
 ##############
 intel_data$Lithography<- na.locf(intel_data$Lithography) # fill theo forrward (theo năm trước đó)
@@ -133,12 +145,12 @@ intel_data$Cache_Type <- ifelse(intel_data$Cache_Type == "", "Normal", sub(" ","
 ##INSTRUCTION SET
 ##############
 intel_data$Instruction_Set <- na.fill(intel_data$Instruction_Set,"64-bit")   # 64-bit là mode value của các loại máy nên ta fill bằng mode
-intel_data$Instruction_Set <- as.factor(intel_data$Instruction_Set)
+intel_data$Instruction_Set <- factor(intel_data$Instruction_Set, levels = unique(intel_data$Instruction_Set))
 
 ## VERTICAL SEGMENT
 ##############
 ## Ta thấy không có dữ liệu NaN nên ta không cần xử lý NaN chỉ cần xử lý chuỗi thành factor
-intel_data$Vertical_Segment <- as.factor(intel_data$Vertical_Segment)
+intel_data$Vertical_Segment <- factor(intel_data$Vertical_Segment, levels = unique(intel_data$Vertical_Segment))
 
 ## Ta thấy không có dữ liệu NaN nên ta không cần xử lý NaN chỉ cần xử lý chuỗi thành factor
 ## PROCESSOR BASE FREQUENCY
@@ -155,6 +167,7 @@ intel_data <- intel_data[complete.cases(intel_data$Processor_Base_Frequency),]
 ## CACHE TYPE
 ##############
 intel_data$Cache_Type <- factor(intel_data$Cache_Type, levels = unique(intel_data$Cache_Type))
+
 ##KIỂM TRA LẠI DỮ LIỆU
 ##############
 # check xem còn dữ liệu nào thiếu không 
@@ -220,6 +233,7 @@ histogram_bplot <- function(intel_data, col, na.rm = T) {
           xlab = col,
           ylab = "",
           las = 1)}
+histogram_bplot(intel_data,"Processor_Base_Frequency")
 histogram_bplot(intel_data,"Max_Memory_Size")
 histogram_bplot(intel_data,"Lithography")
 histogram_bplot(intel_data,"nb_of_Cores")
@@ -234,6 +248,12 @@ print(summary_categorical_table)
 # VẼ ĐỒ THỊ MÔ TẢ
 ##############
 ## VẼ ĐỒ THỊ MÔ TẢ CHO DỮ LIỆU SỐ
+
+### Processor Base Frequency
+hist(intel_data$Processor_Base_Frequency, main = "Processor Base Frequency Distribution", xlab = "Processor Base Frequency", breaks = 20)
+boxplot(intel_data$Processor_Base_Frequency, main = "Processor Base Frequency Distribution", xlab = "Processor Base Frequency")
+
+
 ### Cache Size
 nf <- layout( matrix(c(1,2), ncol=2) )
 hist(intel_data$Cache_Size, main = "Cache Size Distribution", xlab = "Cache Size", breaks = 20)
@@ -281,7 +301,86 @@ lit_ld <- ggplot(intel_data, aes(x = Launch_Date, y = Lithography)) +
   geom_smooth(method = "lm", se = FALSE) +
   labs(x = "Launch Date", y = "Lithography")
 
+# Processor_Base_Frequency NA duoi 3%, xoa NA
+intel_data <- intel_data[!is.na(intel_data$Processor_Base_Frequency), ]
+
 plot_grid(pbf_ld, noc_ld, noth_ld, csize_ld, lit_ld, ncol = 2, nrow = 3)
+
+# thay the cac gia tri NA cua du lieu khuyet thieu
+intel_data$Processor_Base_Frequency <- ifelse(is.na(intel_data$Processor_Base_Frequency), median(intel_data$Processor_Base_Frequency, na.rm=TRUE), intel_data$Processor_Base_Frequency)
+intel_data$Cache_Size <- ifelse(is.na(intel_data$Cache_Size), median(intel_data$Cache_Size, na.rm=TRUE), intel_data$Cache_Size)
+intel_data$Lithography <- ifelse(is.na(intel_data$Lithography), median(intel_data$Lithography, na.rm=TRUE), intel_data$Lithography)
+intel_data$Max_Memory_Size <- ifelse(is.na(intel_data$Max_Memory_Size), median(intel_data$Max_Memory_Size, na.rm=TRUE), intel_data$Max_Memory_Size)
+intel_data$nb_of_Cores <- ifelse(is.na(intel_data$nb_of_Cores), median(intel_data$nb_of_Cores, na.rm=TRUE), intel_data$nb_of_Cores)
+intel_data$nb_of_Threads <- ifelse(is.na(intel_data$nb_of_Threads), median(intel_data$nb_of_Threads, na.rm=TRUE), intel_data$nb_of_Threads)
+
+#Xem 6 hang dau tien cua khung du lieu
+head(intel_data)
+
+# kiem tra lai so luong du lieu khuyet thieu
+apply(is.na(intel_data),2,sum)
+apply(is.na(intel_data),2,which)
+
+# kiem tra du lieu trung lap dung lenh distinct() theo hinh thuc pipeline
+str(intel_data)
+
+# loai bo cac du lieu trung lap
+intel_data <- intel_data %>% dplyr::distinct()
+str(intel_data)
+
+intel_data$Cache_Size <- exp(intel_data$Cache_Size)
+
+# kiem tra cac cot co so nao am khong 
+any(intel_data$Processor_Base_Frequency < 0)
+any(intel_data$Cache_Size < 0)
+any(intel_data$Lithography < 0)
+any(intel_data$Max_Memory_Size < 0)
+any(intel_data$nb_of_Cores < 0)
+any(intel_data$nb_of_Threads < 0)
+
+# chuyen doi cac bien sang dang log
+intel_datalog <- intel_data
+intel_datalog[, c("Processor_Base_Frequency", "Cache_Size", "Lithography", "Max_Memory_Size", "nb_of_Cores", "nb_of_Threads")] <- log(intel_datalog[, c("Processor_Base_Frequency", "Cache_Size", "Lithography", "Max_Memory_Size", "nb_of_Cores", "nb_of_Threads")])                                                    
+
+#Xem 6 hang dau tien cua khung du lieu
+head(intel_datalog)
+#end
+
+#Thong ke ta
+#Phan nay se phan tich chi tiet du lieu bang cac bieu do
+
+# tom tat du lieu 
+summary(intel_data)
+
+#ve scatter plot 
+par(mfrow =c(2,3))
+plot(intel_data$Cache_Size, intel_data$Processor_Base_Frequency, xlab = "Cache Size", ylab = "Processor_Base_Frequency",main = "Scatter Plot of Cache Size with Processor Base Frequency", col = "blue",pch = 16 )
+plot(intel_data$Lithography, intel_data$Processor_Base_Frequency, xlab = "Lithography", ylab = "Processor_Base_Frequency",main = "Scatter Plot of Lithography with Processor Base Frequency", col = "blue",pch = 16 )
+plot(intel_data$Max_Memory_Size, intel_data$Processor_Base_Frequency, xlab = "Max Memory Size", ylab = "Processor_Base_Frequency",main = "Scatter Plot of Max Memory Size with Processor Base Frequency", col = "blue",pch = 16 )
+plot(intel_data$nb_of_Cores, intel_data$Processor_Base_Frequency, xlab = "Number of Cores", ylab = "Processor_Base_Frequency",main = "Scatter Plot of Number of Cores with Processor Base Frequency", col = "blue",pch = 16 )
+plot(intel_data$nb_of_Threads, intel_data$Processor_Base_Frequency, xlab = "Number of Threads", ylab = "Processor_Base_Frequency",main = "Scatter Plot of Number of Threads with Processor Base Frequency", col = "blue",pch = 16 )
+
+#he so tuong quan cho cac thong so
+cor.test(intel_data$Cache_Size, intel_data$Processor_Base_Frequency, method = "pearson")
+cor.test(intel_data$Lithography, intel_data$Processor_Base_Frequency, method = "pearson")
+cor.test(intel_data$Max_Memory_Size, intel_data$Processor_Base_Frequency, method = "pearson")
+cor.test(intel_data$nb_of_Cores, intel_data$Processor_Base_Frequency, method = "pearson")
+cor.test(intel_data$nb_of_Threads, intel_data$Processor_Base_Frequency, method = "pearson")
+
+#ve scatter plot cho cac bien sau khi chuyen sang dang logarit
+plot(intel_datalog$Cache_Size, intel_datalog$Processor_Base_Frequency, xlab = "log(Cache Size)", ylab = "log(Processor Base Frequency)",main = "Scatter Plot of log(Cache Size) with log(Processor Base Frequency)", col = "green",pch = 16 )
+plot(intel_datalog$Lithography, intel_datalog$Processor_Base_Frequency, xlab = "log(Lithography)", ylab = "log(Processor Base Frequency)",main = "Scatter Plot of log(Memory) with log(Processor Base Frequency)", col = "green",pch = 16 )
+plot(intel_datalog$Max_Memory_Size, intel_datalog$Processor_Base_Frequency, xlab = "log(Max Memory Size)", ylab = "log(Processor Base Frequency)",main = "Scatter Plot of log(Max Memory Size) with log(Processor Base Frequency)", col = "green",pch = 16 )
+plot(intel_datalog$nb_of_Cores, intel_datalog$Processor_Base_Frequency, xlab = "log(Number of Cores)", ylab = "log(Processor Base Frequency)",main = "Scatter Plot of log(Number of Cores) with log(Processor Base Frequency)", col = "green",pch = 16 )
+plot(intel_datalog$nb_of_Threads, intel_datalog$Processor_Base_Frequency, xlab = "log(Number of Threads)", ylab = "log(Processor Base Frequency)",main = "Scatter Plot of log(Number of Threads) with log(Processor Base Frequency)", col = "green",pch = 16 )
+
+#he so tuong quan cho cac thong so log
+cor.test(intel_datalog$Cache_Size, intel_datalog$Processor_Base_Frequency, method = "pearson")
+cor.test(intel_datalog$Lithography, intel_datalog$Processor_Base_Frequency, method = "pearson")
+cor.test(intel_datalog$Max_Memory_Size, intel_datalog$Processor_Base_Frequency, method = "pearson")
+cor.test(intel_datalog$nb_of_Cores, intel_datalog$Processor_Base_Frequency, method = "pearson")
+cor.test(intel_datalog$nb_of_Threads, intel_datalog$Processor_Base_Frequency, method = "pearson")
+
 # THỐNG KÊ SUY DIỄN
 ##############
 ## Kiểm định giả thuyết
@@ -299,13 +398,13 @@ test_data <- intel_data[-index,]
 lm_model <- lm(Launch_Date ~ ., data = train_data)
 lm_summary <- summary(lm_model)
 lm_summary
-y_train_pred <- predict(lm_model,newdata=train_data,response = "Lauch_Date")
-y_test_pred <- predict(lm_model, newdata=test_data,response = "Lauch_Date")
+y_train_pred <- predict(lm_model,intel_data=train_data,response = "Lauch_Date")
+y_test_pred <- predict(lm_model, intel_data=test_data,response = "Lauch_Date")
 # Đánh giá mô hình
 mse_train<- mse(y_train_pred,train_data$Launch_Date)
 mse_test<- mse(y_test_pred,test_data$Launch_Date)
 mae_train <- mae(y_train_pred,train_data$Launch_Date)
-mae_test <- mae(y_test_pred,test_data$LauncPrh_Date)
+mae_test <- mae(y_test_pred,test_data$Launch_Date)
 metric <- data.frame(
   variable = c("MSE","MSE","MAE","MAE"),
   value = c(mse_train,mse_test, mae_train, mae_test),
@@ -318,3 +417,4 @@ ggplot(metric,aes(x = variable, y = value,color = type,group=type)) +
 # export result
 ###############
 # export(intel_data_raw, here("data", "clean", "my_data.rds"))
+
