@@ -76,7 +76,7 @@ for (i in product_collect) {
   # nhóm dữ liệu thành các loại dòng chip hiện tại
   intel_data$Product_Collection <- ifelse(grepl(i, intel_data$Product_Collection), i, intel_data$Product_Collection)
 }
-intel_data$Product_Collection <- factor(intel_data$Product_Collection, levels = product_collect)
+intel_data$Product_Collection <- as.factor(intel_data$Product_Collection)
 
 ##LAUNCH DATE
 ##############
@@ -125,12 +125,12 @@ intel_data$Cache_Type <- ifelse(intel_data$Cache_Type == "", "Normal", sub(" ","
 ##INSTRUCTION SET
 ##############
 intel_data$Instruction_Set <- na.fill(intel_data$Instruction_Set,"64-bit")   # 64-bit là mode value của các loại máy nên ta fill bằng mode
-intel_data$Instruction_Set <- factor(intel_data$Instruction_Set, levels = unique(intel_data$Instruction_Set))
+intel_data$Instruction_Set <- as.factor(intel_data$Instruction_Set)
 
 ## VERTICAL SEGMENT
 ##############
 ## Ta thấy không có dữ liệu NaN nên ta không cần xử lý NaN chỉ cần xử lý chuỗi thành factor
-intel_data$Vertical_Segment <- factor(intel_data$Vertical_Segment, levels = unique(intel_data$Vertical_Segment))
+intel_data$Vertical_Segment <- as.factor(intel_data$Vertical_Segment)
 
 ## Ta thấy không có dữ liệu NaN nên ta không cần xử lý NaN chỉ cần xử lý chuỗi thành factor
 ## PROCESSOR BASE FREQUENCY
@@ -146,7 +146,7 @@ intel_data <- intel_data[complete.cases(intel_data$Processor_Base_Frequency),]
 
 ## CACHE TYPE
 ##############
-intel_data$Cache_Type <- factor(intel_data$Cache_Type, levels = unique(intel_data$Cache_Type))
+intel_data$Cache_Type <- as.factor(intel_data$Cache_Type)
 ##KIỂM TRA LẠI DỮ LIỆU
 ##############
 # check xem còn dữ liệu nào thiếu không 
@@ -258,7 +258,7 @@ index <- createDataPartition(intel_data$Launch_Date, p = 0.8, list = FALSE)
 train_data <- intel_data[index,]
 test_data <- intel_data[-index,]
 
-lm_model <- lm(Launch_Date ~ ., data = train_data)
+lm_model <- lm(Processor_Base_Frequency ~ ., data = train_data)
 lm_summary <- summary(lm_model)
 lm_summary
 y_train_pred <- predict(lm_model,newdata=train_data,response = "Lauch_Date")
@@ -267,7 +267,7 @@ y_test_pred <- predict(lm_model, newdata=test_data,response = "Lauch_Date")
 mse_train<- mse(y_train_pred,train_data$Launch_Date)
 mse_test<- mse(y_test_pred,test_data$Launch_Date)
 mae_train <- mae(y_train_pred,train_data$Launch_Date)
-mae_test <- mae(y_test_pred,test_data$Launch_Date)
+mae_test <- mae(y_test_pred,test_data$LauncPrh_Date)
 metric <- data.frame(
   variable = c("MSE","MSE","MAE","MAE"),
   value = c(mse_train,mse_test, mae_train, mae_test),
