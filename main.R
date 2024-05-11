@@ -46,7 +46,6 @@ intel_data <- intel_data_raw[,c("Product_Collection","Vertical_Segment","Launch_
 print(summary(intel_data))
 
 # Xử lý dữ liệu khuyết ----
-# XỬ LÝ DỮ LIỆU KHUYỂT
 ###############
  print(skimr::skim(intel_data))
 # KIỂM TRA DỮ LIỆU KHUYẾT để thay thế dữ liệu khuyết
@@ -96,7 +95,7 @@ for (i in product_collect) {
   # nhóm dữ liệu thành các loại dòng chip hiện tại
   intel_data$Product_Collection <- ifelse(grepl(i, intel_data$Product_Collection), i, intel_data$Product_Collection)
 }
-
+intel_data$Product_Collection <- factor(intel_data$Product_Collection, levels = unique(intel_data$Product_Collection))
 ##LITHOGRAPHY
 ##############
 intel_data$Lithography<- na.locf(intel_data$Lithography) # fill theo forrward (theo năm trước đó)
@@ -156,6 +155,7 @@ intel_data <- intel_data[complete.cases(intel_data$Processor_Base_Frequency),]
 ## CACHE TYPE
 ##############
 intel_data$Cache_Type <- factor(intel_data$Cache_Type, levels = unique(intel_data$Cache_Type))
+
 ##KIỂM TRA LẠI DỮ LIỆU
 ##############
 # check xem còn dữ liệu nào thiếu không 
@@ -168,42 +168,43 @@ head(intel_data, 10)
 
 # kiểm tra lại số liệu và định dạng
 print(str(intel_data))
+
 ##LÀM RÕ DỮ LIỆU
 ##############
 # Các cột dữ liệu số
-numerical_cols = c("Launch_Date","Lithography","nb_of_Cores","nb_of_Threads",
-                   "Cache_Size","Max_Memory_Size","Max_nb_of_Memory_Channels")
+#numerical_cols = c("Launch_Date","Lithography","nb_of_Cores","nb_of_Threads",
+#                    "Cache_Size","Max_Memory_Size","Max_nb_of_Memory_Channels")
 # Các cột dữ liệu phân loại
-categorical_cols = c("Product_Collection","Vertical_Segment","Cache_Type","Instruction_Set")
-# Xây dựng bảng thống kê mô tả
-summary_numeric_table <- data.frame(
-  Staticstic=c("Count", "Mean", "STD", "Min", "Median", "Max")
-)
-for (i in numerical_cols){
-  count <- length(intel_data[[i]])
-  mean<- mean(intel_data[[i]])
-  std <- sd(intel_data[[i]])
-  min <- min(intel_data[[i]])
-  first_quantile <- sapply(intel_data[i], function(x) quantile(x, 0.25) )[[1]]
-  median <- median(intel_data[[i]])
-  third_quantile <- sapply(intel_data[i], function(x) quantile(x, 0.75))[[1]]
-  max <- max(intel_data[[i]])
-  summary_numeric_table <- cbind(summary_numeric_table,new_col=c(count,mean,std,min,first_quantile,median,third_quantile,max))
-}
-colnames(summary_numeric_table) <- c("",numerical_cols)
+# categorical_cols = c("Product_Collection","Vertical_Segment","Cache_Type","Instruction_Set")
+# Xây dựng bảng thống kê tả
+# summary_numeric_table <- data.frame(
+#   Staticstic=c("Count", "Mean", "STD", "Min", "Median", "Max")
+# )
+# for (i in numerical_cols){
+#   count <- length(intel_data[[i]])
+#   mean<- mean(intel_data[[i]])
+#   std <- sd(intel_data[[i]])
+#   min <- min(intel_data[[i]])
+#   first_quantile <- sapply(intel_data[i], function(x) quantile(x, 0.25) )[[1]]
+#   median <- median(intel_data[[i]])
+#   third_quantile <- sapply(intel_data[i], function(x) quantile(x, 0.75))[[1]]
+#   max <- max(intel_data[[i]])
+#   summary_numeric_table <- cbind(summary_numeric_table,new_col=c(count,mean,std,min,first_quantile,median,third_quantile,max))
+# }
+# colnames(summary_numeric_table) <- c("",numerical_cols)
 
-summary_categorical_table <- data.frame(
-  Staticstic = c("Count","Unique","Mode","Freq")
-)
-for (i in categorical_cols) {
-  count <- length(intel_data[[i]])
-  unique <- length( unique(intel_data[[i]]))
-  mode <- Mode(intel_data[[i]])
-  freq <- attr(mode,"freq")
-  summary_categorical_table <- cbind(summary_categorical_table,new_col=c(count,unique,mode,freq))
-}
-colnames(summary_categorical_table) <- c("",categorical_cols)
-summary_numeric_table
+# summary_categorical_table <- data.frame(
+#   Staticstic = c("Count","Unique","Mode","Freq")
+# )
+# for (i in categorical_cols) {
+#   count <- length(intel_data[[i]])
+#   unique <- length( unique(intel_data[[i]]))
+#   mode <- Mode(intel_data[[i]])
+#   freq <- attr(mode,"freq")
+#   summary_categorical_table <- cbind(summary_categorical_table,new_col=c(count,unique,mode,freq))
+# }
+# colnames(summary_categorical_table) <- c("",categorical_cols)
+# summary_numeric_table
 
 ### Vẽ biểu đồ
 ##############
