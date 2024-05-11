@@ -34,20 +34,22 @@ intel_data_raw <- read.csv(
   "data/Intel_CPUs.csv", 
   na.string = c("", " ","   ","N/A","NA") # and process missing
 )
+
 # chọn các cột cần sử dụng
 intel_data <- intel_data_raw[,c("Product_Collection","Vertical_Segment","Status","Launch_Date","Lithography",
-                          "Recommended_Customer_Price","nb_of_Cores","nb_of_Threads",
+                          "nb_of_Cores","nb_of_Threads",
                           "Cache","Max_Memory_Size","Max_nb_of_Memory_Channels","Instruction_Set")]
+
 # in ra bảng thống kê sơ bộ của dữ liệu
 print(summary(intel_data))
 
 # Xử lý dữ liệu khuyết ----
 ###############
-# KIỂM TRA DỮ LIỆU KHUYẾT
+# KIỂM TRA DỮ LIỆU KHUYẾT để thay thế dữ liệu khuyết
 print(apply(is.na(intel_data),2,sum))
 
 
-intel_data <- intel_data[complete.cases(intel_data$Max_Memory_Size), ]   # drop toàn bộ dòng có N/A của cột này
+intel_data <- intel_data[complete.cases(intel_data$Max_Memory_Size), ]   # xóa toàn bộ dòng có N/A của cột này
 max_mem_size_clean <- function(size){  
   if(grepl('G',size)){
     return ( as.double(gsub(" GB","",size)) )
@@ -60,15 +62,6 @@ intel_data$Max_Memory_Size <- sapply(intel_data$Max_Memory_Size,max_mem_size_cle
 # SẮP XẾP LẠI DATA
 ##############
 
-
-## PRODUCT COLLECTION
-##############
-product_collect <- c('Legacy', 'Celeron', 'Pentium', 'Quark', 'Atom', 'Itanium', 'Xeon','Core')
-for (i in product_collect) {
-  # nhóm dữ liệu thành các loại dòng chip hiện tại
-  intel_data$Product_Collection <- ifelse(grepl(i, intel_data$Product_Collection), i, intel_data$Product_Collection)
-}
-
 ##LAUNCH DATE
 ##############
 intel_data <- intel_data[complete.cases(intel_data$Launch_Date), ]                   
@@ -78,6 +71,15 @@ intel_data$Launch_Date <- as.integer(intel_data$Launch_Date)
 intel_data$Launch_Date <- ifelse(intel_data$Launch_Date>22,1900+intel_data$Launch_Date,2000+intel_data$Launch_Date) 
 # sắp xếp lại dataframe theo ưu tiên sau: năm, loại CPU, loại phân khúc
 intel_data <- intel_data[order(intel_data$Launch_Date,intel_data$Product_Collection,intel_data$Vertical_Segment), ]
+
+
+## PRODUCT COLLECTION
+##############
+product_collect <- c('Legacy', 'Celeron', 'Pentium', 'Quark', 'Atom', 'Itanium', 'Xeon','Core')
+for (i in product_collect) {
+  # nhóm dữ liệu thành các loại dòng chip hiện tại
+  intel_data$Product_Collection <- ifelse(grepl(i, intel_data$Product_Collection), i, intel_data$Product_Collection)
+}
 
 ##LITHOGRAPHY
 ##############
