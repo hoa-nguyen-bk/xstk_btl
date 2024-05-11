@@ -227,7 +227,7 @@ histogram_bplot(intel_data,"nb_of_Cores")
 histogram_bplot(intel_data,"nb_of_Threads")
 histogram_bplot(intel_data,"Cache_Size")
 
-## export result ----
+  ## export result ----
 
 print(summary_numeric_table)
 print(summary_categorical_table)
