@@ -38,10 +38,9 @@ intel_data_raw <- read.csv(
   na.strings = c("", " ","   ","N/A","NA") # and process missing
 )
 # chọn các cột cần sử dụng
-intel_data <- intel_data_raw[,c("Product_Collection","Vertical_Segment","Status","Launch_Date","Lithography"
-                          ,"nb_of_Cores","nb_of_Threads",
+intel_data <- intel_data_raw[,c("Product_Collection","Vertical_Segment","Launch_Date","Lithography"
+                          ,"nb_of_Cores","nb_of_Threads","Processor_Base_Frequency",
                           "Cache","Max_Memory_Size","Max_nb_of_Memory_Channels","Instruction_Set")]
-
 # in ra bảng thống kê sơ bộ của dữ liệu
 print(summary(intel_data))
 print(skimr::skim(intel_data))
@@ -64,6 +63,7 @@ max_mem_size_clean <- function(size){
 
 # apply hàm để xử lý từng ô dữ liệu: đổi TB về GB và đổi định dạng số 
 intel_data$Max_Memory_Size <- sapply(intel_data$Max_Memory_Size,max_mem_size_clean)     
+
 
 # SẮP XẾP LẠI DATA
 ##############
@@ -132,13 +132,21 @@ intel_data$Instruction_Set <- factor(intel_data$Instruction_Set, levels = unique
 ## Ta thấy không có dữ liệu NaN nên ta không cần xử lý NaN chỉ cần xử lý chuỗi thành factor
 intel_data$Vertical_Segment <- factor(intel_data$Vertical_Segment, levels = unique(intel_data$Vertical_Segment))
 
-## STATUS
-##############
 ## Ta thấy không có dữ liệu NaN nên ta không cần xử lý NaN chỉ cần xử lý chuỗi thành factor
-intel_data$Status <- factor(intel_data$Status, levels = unique(intel_data$Status))
-##
+## PROCESSOR BASE FREQUENCY
 ##############
+base_frequency_f <-function(f){
+  if (grepl(' GHz',f)) {
+    return (as.double(gsub(" GHz","",f))*1000)
+  }
+  return (as.double(gsub(" MHz","",f)))
+}
+intel_data$Processor_Base_Frequency <-as.integer(sapply(intel_data$Processor_Base_Frequency,base_frequency_f)) 
+intel_data <- intel_data[complete.cases(intel_data$Processor_Base_Frequency),]
 
+## CACHE TYPE
+##############
+intel_data$Cache_Type <- factor(intel_data$Cache_Type, levels = unique(intel_data$Cache_Type))
 ##KIỂM TRA LẠI DỮ LIỆU
 ##############
 # check xem còn dữ liệu nào thiếu không 
@@ -153,7 +161,7 @@ print(str(intel_data))
 numerical_cols = c("Launch_Date","Lithography","nb_of_Cores","nb_of_Threads",
                    "Cache_Size","Max_Memory_Size","Max_nb_of_Memory_Channels")
 # Các cột dữ liệu phân loại
-categorical_cols = c("Product_Collection","Vertical_Segment","Status","Cache_Type","Instruction_Set")
+categorical_cols = c("Product_Collection","Vertical_Segment","Cache_Type","Instruction_Set")
 # Xây dựng bảng thống kê mô tả
 summary_numeric_table <- data.frame(
   Staticstic=c("Count", "Mean", "STD", "Min", "Median", "Max")
@@ -209,6 +217,33 @@ boxplot(intel_data$nb_of_Cores, main = "Number of Cores Distribution", xlab = "N
 hist(intel_data$nb_of_Threads, main = "Number of Threads Distribution", xlab = "Number of Threads", breaks = 20)
 boxplot(intel_data$nb_of_Threads, main = "Number of Threads Distribution", xlab = "Number of Threads")
 
+### Processor Base Frequency vs Launch Date
+pbf_ld <- ggplot(intel_data, aes(x = Launch_Date, y = Processor_Base_Frequency)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x = "Launch Date", y = "Processor Base Frequency")
+### Number of Cores vs Launch Date
+noc_ld <-ggplot(intel_data, aes(x = Launch_Date, y = nb_of_Cores)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x = "Launch Date", y = "Number of Cores")
+### Number of Threads vs Launch Date
+noth_ld <- ggplot(intel_data, aes(x = Launch_Date, y = nb_of_Threads)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x = "Launch Date", y = "Number of Threads")
+### Cache Size vs Launch Date
+csize_ld <- ggplot(intel_data, aes(x = Launch_Date, y = Cache_Size)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x = "Launch Date", y = "Cache Size")
+### Lithography vs Launch Date
+lit_ld <- ggplot(intel_data, aes(x = Launch_Date, y = Lithography)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x = "Launch Date", y = "Lithography")
+
+plot_grid(pbf_ld, noc_ld, noth_ld, csize_ld, lit_ld, ncol = 2, nrow = 3)
 # THỐNG KÊ SUY DIỄN
 ##############
 ## Kiểm định giả thuyết
@@ -223,8 +258,9 @@ index <- createDataPartition(intel_data$Launch_Date, p = 0.8, list = FALSE)
 train_data <- intel_data[index,]
 test_data <- intel_data[-index,]
 
-lm_model <- lm(Launch_Date ~ Product_Collection + Vertical_Segment + Lithography + nb_of_Cores + Instruction_Set + Cache_Size, data = train_data)
+lm_model <- lm(Launch_Date ~ ., data = train_data)
 lm_summary <- summary(lm_model)
+lm_summary
 y_train_pred <- predict(lm_model,newdata=train_data,response = "Lauch_Date")
 y_test_pred <- predict(lm_model, newdata=test_data,response = "Lauch_Date")
 # Đánh giá mô hình
