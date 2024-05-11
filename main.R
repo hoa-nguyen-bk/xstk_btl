@@ -25,7 +25,9 @@ pacman::p_load(
   reshape2,
   mltools,
   DescTools,
-  plotly
+  plotly,
+  httpgd,
+  cowplot
   )
 
 # load data ----
@@ -36,31 +38,45 @@ intel_data_raw <- read.csv(
 )
 
 # chọn các cột cần sử dụng
-intel_data <- intel_data_raw[,c("Product_Collection","Vertical_Segment","Status","Launch_Date","Lithography",
-                          "nb_of_Cores","nb_of_Threads",
+intel_data <- intel_data_raw[,c("Product_Collection","Vertical_Segment","Launch_Date","Lithography"
+                          ,"nb_of_Cores","nb_of_Threads","Processor_Base_Frequency",
                           "Cache","Max_Memory_Size","Max_nb_of_Memory_Channels","Instruction_Set")]
 
 # in ra bảng thống kê sơ bộ của dữ liệu
 print(summary(intel_data))
 
 # Xử lý dữ liệu khuyết ----
+# XỬ LÝ DỮ LIỆU KHUYỂT
 ###############
+ print(skimr::skim(intel_data))
 # KIỂM TRA DỮ LIỆU KHUYẾT để thay thế dữ liệu khuyết
 print(apply(is.na(intel_data),2,sum))
 
 
 intel_data <- intel_data[complete.cases(intel_data$Max_Memory_Size), ]   # xóa toàn bộ dòng có N/A của cột này
 max_mem_size_clean <- function(size){  
-  if(grepl('G',size)){
+  if(grepl("G",size)){
     return ( as.double(gsub(" GB","",size)) )
   }
   return ( as.double(gsub(" TB","",size)) * 1024 )
 }
+
 # apply hàm để xử lý từng ô dữ liệu: đổi TB về GB và đổi định dạng số 
 intel_data$Max_Memory_Size <- sapply(intel_data$Max_Memory_Size,max_mem_size_clean)     
 
+
 # SẮP XẾP LẠI DATA
 ##############
+
+
+## PRODUCT COLLECTION
+##############
+product_collect <- c("Legacy", "Celeron", "Pentium", "Quark", "Atom", "Itanium", "Xeon","Core")
+for (i in product_collect) {
+  # nhóm dữ liệu thành các loại dòng chip hiện tại
+  intel_data$Product_Collection <- ifelse(grepl(i, intel_data$Product_Collection), i, intel_data$Product_Collection)
+}
+intel_data$Product_Collection <- factor(intel_data$Product_Collection, levels = product_collect)
 
 ##LAUNCH DATE
 ##############
@@ -91,37 +107,20 @@ intel_data$Lithography <-as.double( gsub(" nm$", "", intel_data$Lithography)) # 
 # 1 core thường sẽ có 2 luồng
 intel_data$nb_of_Threads <- ifelse(is.na(intel_data$nb_of_Threads), intel_data$nb_of_Cores * 2, intel_data$nb_of_Threads)
 
-##RECOMMENDED CUSTOMER PRICE
-##############
-recommend_price <- function(price_range) {
-  if(grepl('-', price_range)) {
-    range <- strsplit(price_range, "-")[[1]]
-    return((as.double(range[1]) + as.double(range[2])) / 2)
-  }
-  return (price_range)
-}
-# sửa định dạng chuỗi
-intel_data$Recommended_Customer_Price <- gsub("\\$", "", intel_data$Recommended_Customer_Price) 
-intel_data$Recommended_Customer_Price <- gsub(",", "", intel_data$Recommended_Customer_Price)
-# apply hàm để xử lý số liệu
-intel_data$Recommended_Customer_Price <- sapply(intel_data$Recommended_Customer_Price, recommend_price) 
-intel_data$Recommended_Customer_Price <- as.double(intel_data$Recommended_Customer_Price) 
-intel_data$Recommended_Customer_Price <- log(intel_data$Recommended_Customer_Price) 
-intel_data <- intel_data %>%
-  group_by(Product_Collection) %>%
-  # fill theo dữ liệu từng loại chip theo thứ tự là forward rồi tới backward
-  fill(Recommended_Customer_Price, .direction = "updown")
 
 ##CACHE
 ##############
 Cache_Size_Clean <- function(size){
-  if(grepl('K',size)){
-    return (as.double(gsub(" K","",size)) /1024)
+  if(grepl("K", size)){
+    return (as.double(gsub(" K", "", size)) /1024)
   }
   else{
     return (as.double(gsub(" M","",size)))
   }
 }
+
+
+
 # tách dữ liệu thành 2 cột gồm loại cache và size của nó
 intel_data <- separate(intel_data,Cache,into = c("Cache_Size","Cache_Type"),sep="B") 
 # xử lý chuỗi và đưa về kiểu số thực
@@ -130,36 +129,55 @@ intel_data$Cache_Size <- log(intel_data$Cache_Size)
 # vì lệnh separate nên loại thường không được thêm vào
 intel_data$Cache_Type <- ifelse(intel_data$Cache_Type == "", "Normal", sub(" ","",intel_data$Cache_Type))
 
+
+
 ##INSTRUCTION SET
 ##############
 intel_data$Instruction_Set <- na.fill(intel_data$Instruction_Set,"64-bit")   # 64-bit là mode value của các loại máy nên ta fill bằng mode
+intel_data$Instruction_Set <- factor(intel_data$Instruction_Set, levels = unique(intel_data$Instruction_Set))
 
+## VERTICAL SEGMENT
+##############
+## Ta thấy không có dữ liệu NaN nên ta không cần xử lý NaN chỉ cần xử lý chuỗi thành factor
+intel_data$Vertical_Segment <- factor(intel_data$Vertical_Segment, levels = unique(intel_data$Vertical_Segment))
 
+## Ta thấy không có dữ liệu NaN nên ta không cần xử lý NaN chỉ cần xử lý chuỗi thành factor
+## PROCESSOR BASE FREQUENCY
+##############
+base_frequency_f <-function(f){
+  if (grepl(' GHz',f)) {
+    return (as.double(gsub(" GHz","",f))*1000)
+  }
+  return (as.double(gsub(" MHz","",f)))
+}
+intel_data$Processor_Base_Frequency <-as.integer(sapply(intel_data$Processor_Base_Frequency,base_frequency_f)) 
+intel_data <- intel_data[complete.cases(intel_data$Processor_Base_Frequency),]
 
-
-## Kiểm tra lại dữ liệu ----
+## CACHE TYPE
+##############
+intel_data$Cache_Type <- factor(intel_data$Cache_Type, levels = unique(intel_data$Cache_Type))
+##KIỂM TRA LẠI DỮ LIỆU
 ##############
 # check xem còn dữ liệu nào thiếu không 
-print(apply(is.na(intel_data),2,sum) )
+print(apply(is.na(intel_data), 2, sum))
+print(skimr::skim(intel_data))
 # kiểm tra lại số liệu và định dạng
 print(str(intel_data) )
 print(summary(intel_data))
 head(intel_data, 10)
 
-
-## Thống kê tả ----
+# kiểm tra lại số liệu và định dạng
+print(str(intel_data))
+##LÀM RÕ DỮ LIỆU
 ##############
-
-### LÀM RÕ DỮ LIỆU
-##############
-# chia dữ liệu thành 2 loại biến : numeric - định lượng và categorical - định tính
-numerical_cols = c("Launch_Date","Lithography","Recommended_Customer_Price","nb_of_Cores","nb_of_Threads",
-                   "Cache_Size","Max_Memory_Size","Max_nb_of_Memory_Channels","Max_Memory_Bandwidth")
-categorical_cols = c("Product_Collection","Vertical_Segment","Status","Cache_Type","Instruction_Set")
-
-# Xây dựng bảng thống kê
+# Các cột dữ liệu số
+numerical_cols = c("Launch_Date","Lithography","nb_of_Cores","nb_of_Threads",
+                   "Cache_Size","Max_Memory_Size","Max_nb_of_Memory_Channels")
+# Các cột dữ liệu phân loại
+categorical_cols = c("Product_Collection","Vertical_Segment","Cache_Type","Instruction_Set")
+# Xây dựng bảng thống kê mô tả
 summary_numeric_table <- data.frame(
-  Staticstic=c("Count", "Mean", "STD", "Min", "First Quantile", "Median", "Third Quantile", "Max")
+  Staticstic=c("Count", "Mean", "STD", "Min", "Median", "Max")
 )
 for (i in numerical_cols){
   count <- length(intel_data[[i]])
@@ -209,6 +227,94 @@ histogram_bplot(intel_data,"nb_of_Threads")
 histogram_bplot(intel_data,"Cache_Size")
 
 ## export result ----
-###############
-export(intel_data_raw,here("data","clean","my_data.rds"))
 
+print(summary_numeric_table)
+print(summary_categorical_table)
+
+# VẼ ĐỒ THỊ MÔ TẢ
+##############
+## VẼ ĐỒ THỊ MÔ TẢ CHO DỮ LIỆU SỐ
+### Cache Size
+nf <- layout( matrix(c(1,2), ncol=2) )
+hist(intel_data$Cache_Size, main = "Cache Size Distribution", xlab = "Cache Size", breaks = 20)
+boxplot(intel_data$Cache_Size, main = "Cache Size Distribution", xlab = "Cache Size")
+
+### Lithography
+hist(intel_data$Lithography, main = "Lithography Distribution", xlab = "Lithography", breaks = 20)
+boxplot(intel_data$Lithography, main = "Lithography Distribution", xlab = "Lithography")
+
+### Max Memory Size
+hist(intel_data$Max_Memory_Size, main = "Max Memory Size Distribution", xlab = "Max Memory Size", breaks = 20)
+boxplot(intel_data$Max_Memory_Size, main = "Max Memory Size Distribution", xlab = "Max Memory Size")
+
+### Number of Cores
+hist(intel_data$nb_of_Cores, main = "Number of Cores Distribution", xlab = "Number of Cores", breaks = 20)
+boxplot(intel_data$nb_of_Cores, main = "Number of Cores Distribution", xlab = "Number of Cores")
+
+### Number of Threads
+hist(intel_data$nb_of_Threads, main = "Number of Threads Distribution", xlab = "Number of Threads", breaks = 20)
+boxplot(intel_data$nb_of_Threads, main = "Number of Threads Distribution", xlab = "Number of Threads")
+
+### Processor Base Frequency vs Launch Date
+pbf_ld <- ggplot(intel_data, aes(x = Launch_Date, y = Processor_Base_Frequency)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x = "Launch Date", y = "Processor Base Frequency")
+### Number of Cores vs Launch Date
+noc_ld <-ggplot(intel_data, aes(x = Launch_Date, y = nb_of_Cores)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x = "Launch Date", y = "Number of Cores")
+### Number of Threads vs Launch Date
+noth_ld <- ggplot(intel_data, aes(x = Launch_Date, y = nb_of_Threads)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x = "Launch Date", y = "Number of Threads")
+### Cache Size vs Launch Date
+csize_ld <- ggplot(intel_data, aes(x = Launch_Date, y = Cache_Size)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x = "Launch Date", y = "Cache Size")
+### Lithography vs Launch Date
+lit_ld <- ggplot(intel_data, aes(x = Launch_Date, y = Lithography)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x = "Launch Date", y = "Lithography")
+
+plot_grid(pbf_ld, noc_ld, noth_ld, csize_ld, lit_ld, ncol = 2, nrow = 3)
+# THỐNG KÊ SUY DIỄN
+##############
+## Kiểm định giả thuyết
+anova <- aov(Launch_Date ~ ., data = intel_data)
+anova_summary <- summary(anova)
+anova_summary
+
+
+
+## Mô hình hồi quy
+index <- createDataPartition(intel_data$Launch_Date, p = 0.8, list = FALSE)
+train_data <- intel_data[index,]
+test_data <- intel_data[-index,]
+
+lm_model <- lm(Launch_Date ~ ., data = train_data)
+lm_summary <- summary(lm_model)
+lm_summary
+y_train_pred <- predict(lm_model,newdata=train_data,response = "Lauch_Date")
+y_test_pred <- predict(lm_model, newdata=test_data,response = "Lauch_Date")
+# Đánh giá mô hình
+mse_train<- mse(y_train_pred,train_data$Launch_Date)
+mse_test<- mse(y_test_pred,test_data$Launch_Date)
+mae_train <- mae(y_train_pred,train_data$Launch_Date)
+mae_test <- mae(y_test_pred,test_data$Launch_Date)
+metric <- data.frame(
+  variable = c("MSE","MSE","MAE","MAE"),
+  value = c(mse_train,mse_test, mae_train, mae_test),
+  type = c("train","test","train","test")
+)
+ggplot(metric,aes(x = variable, y = value,color = type,group=type)) +
+  geom_line() +
+  geom_point(size=4) +
+  labs(x = "", y = "Value", color = "Type")
+# export result
+###############
+# export(intel_data_raw, here("data", "clean", "my_data.rds"))
