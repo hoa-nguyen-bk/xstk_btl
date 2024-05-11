@@ -258,7 +258,7 @@ index <- createDataPartition(intel_data$Launch_Date, p = 0.8, list = FALSE)
 train_data <- intel_data[index,]
 test_data <- intel_data[-index,]
 
-lm_model <- lm(Processor_Base_Frequency ~ ., data = train_data)
+lm_model <- lm(Launch_Date ~ ., data = train_data)
 lm_summary <- summary(lm_model)
 lm_summary
 y_train_pred <- predict(lm_model,newdata=train_data,response = "Lauch_Date")
