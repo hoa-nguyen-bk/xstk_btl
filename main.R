@@ -30,30 +30,29 @@ pacman::p_load(
   cowplot
   )
 
-
-# load data 
+# load data ----
 ###############
 intel_data_raw <- read.csv(
   "data/Intel_CPUs.csv", 
-  na.strings = c("", " ","   ","N/A","NA") # and process missing
+  na.string = c("", " ","   ","N/A","NA") # and process missing
 )
+
 # chọn các cột cần sử dụng
 intel_data <- intel_data_raw[,c("Product_Collection","Vertical_Segment","Launch_Date","Lithography"
                           ,"nb_of_Cores","nb_of_Threads","Processor_Base_Frequency",
                           "Cache","Max_Memory_Size","Max_nb_of_Memory_Channels","Instruction_Set")]
+
 # in ra bảng thống kê sơ bộ của dữ liệu
 print(summary(intel_data))
-print(skimr::skim(intel_data))
-# XỬ LÝ DỮ LIỆU KHUYỂT
+
+# Xử lý dữ liệu khuyết ----
 ###############
-# KIỂM TRA DỮ LIỆU KHUYẾT
+ print(skimr::skim(intel_data))
+# KIỂM TRA DỮ LIỆU KHUYẾT để thay thế dữ liệu khuyết
 print(apply(is.na(intel_data),2,sum))
 
-#dữ liệu toàn mất đồng loạt nên phải được phải bỏ
-nrow(intel_data[is.na(intel_data$Max_Memory_Size) & is.na(intel_data$Launch_Date),])
 
-intel_data <- intel_data[complete.cases(intel_data$Max_Memory_Size), ]   # drop toàn bộ dòng có N/A của cột này
-
+intel_data <- intel_data[complete.cases(intel_data$Max_Memory_Size), ]   # xóa toàn bộ dòng có N/A của cột này
 max_mem_size_clean <- function(size){  
   if(grepl("G",size)){
     return ( as.double(gsub(" GB","",size)) )
@@ -88,6 +87,15 @@ intel_data$Launch_Date <- ifelse(intel_data$Launch_Date>22,1900+intel_data$Launc
 # sắp xếp lại dataframe theo ưu tiên sau: năm, loại CPU, loại phân khúc
 intel_data <- intel_data[order(intel_data$Launch_Date,intel_data$Product_Collection,intel_data$Vertical_Segment), ]
 
+
+## PRODUCT COLLECTION
+##############
+product_collect <- c('Legacy', 'Celeron', 'Pentium', 'Quark', 'Atom', 'Itanium', 'Xeon','Core')
+for (i in product_collect) {
+  # nhóm dữ liệu thành các loại dòng chip hiện tại
+  intel_data$Product_Collection <- ifelse(grepl(i, intel_data$Product_Collection), i, intel_data$Product_Collection)
+}
+intel_data$Product_Collection <- as.factor(intel_data$Product_Collection)
 ##LITHOGRAPHY
 ##############
 intel_data$Lithography<- na.locf(intel_data$Lithography) # fill theo forrward (theo năm trước đó)
@@ -146,49 +154,79 @@ intel_data <- intel_data[complete.cases(intel_data$Processor_Base_Frequency),]
 
 ## CACHE TYPE
 ##############
-intel_data$Cache_Type <- as.factor(intel_data$Cache_Type)
+intel_data$Cache_Type <- factor(intel_data$Cache_Type, levels = unique(intel_data$Cache_Type))
 ##KIỂM TRA LẠI DỮ LIỆU
 ##############
 # check xem còn dữ liệu nào thiếu không 
 print(apply(is.na(intel_data), 2, sum))
 print(skimr::skim(intel_data))
+# kiểm tra lại số liệu và định dạng
+print(str(intel_data) )
+print(summary(intel_data))
+head(intel_data, 10)
 
 # kiểm tra lại số liệu và định dạng
 print(str(intel_data))
+
 ##LÀM RÕ DỮ LIỆU
 ##############
 # Các cột dữ liệu số
-numerical_cols = c("Launch_Date","Lithography","nb_of_Cores","nb_of_Threads",
-                   "Cache_Size","Max_Memory_Size","Max_nb_of_Memory_Channels")
+#numerical_cols = c("Launch_Date","Lithography","nb_of_Cores","nb_of_Threads",
+#                    "Cache_Size","Max_Memory_Size","Max_nb_of_Memory_Channels")
 # Các cột dữ liệu phân loại
-categorical_cols = c("Product_Collection","Vertical_Segment","Cache_Type","Instruction_Set")
-# Xây dựng bảng thống kê mô tả
-summary_numeric_table <- data.frame(
-  Staticstic=c("Count", "Mean", "STD", "Min", "Median", "Max")
-)
-for (i in numerical_cols){
-  count <- length(intel_data[[i]])
-  mean<- mean(intel_data[[i]])
-  std <- sd(intel_data[[i]])
-  min <- min(intel_data[[i]])
-  median <- median(intel_data[[i]])
-  max <- max(intel_data[[i]])
-  summary_numeric_table <- cbind(summary_numeric_table,new_col=c(count,mean,std,min,median,max))
-}
+# categorical_cols = c("Product_Collection","Vertical_Segment","Cache_Type","Instruction_Set")
+# Xây dựng bảng thống kê tả
+# summary_numeric_table <- data.frame(
+#   Staticstic=c("Count", "Mean", "STD", "Min", "Median", "Max")
+# )
+# for (i in numerical_cols){
+#   count <- length(intel_data[[i]])
+#   mean<- mean(intel_data[[i]])
+#   std <- sd(intel_data[[i]])
+#   min <- min(intel_data[[i]])
+#   first_quantile <- sapply(intel_data[i], function(x) quantile(x, 0.25) )[[1]]
+#   median <- median(intel_data[[i]])
+#   third_quantile <- sapply(intel_data[i], function(x) quantile(x, 0.75))[[1]]
+#   max <- max(intel_data[[i]])
+#   summary_numeric_table <- cbind(summary_numeric_table,new_col=c(count,mean,std,min,first_quantile,median,third_quantile,max))
+# }
+# colnames(summary_numeric_table) <- c("",numerical_cols)
 
-colnames(summary_numeric_table) <- c("",numerical_cols)
+# summary_categorical_table <- data.frame(
+#   Staticstic = c("Count","Unique","Mode","Freq")
+# )
+# for (i in categorical_cols) {
+#   count <- length(intel_data[[i]])
+#   unique <- length( unique(intel_data[[i]]))
+#   mode <- Mode(intel_data[[i]])
+#   freq <- attr(mode,"freq")
+#   summary_categorical_table <- cbind(summary_categorical_table,new_col=c(count,unique,mode,freq))
+# }
+# colnames(summary_categorical_table) <- c("",categorical_cols)
+# summary_numeric_table
 
-summary_categorical_table <- data.frame(
-  Staticstic = c("Count","Unique","Mode","Freq")
-)
-for (i in categorical_cols) {
-  count <- length(intel_data[[i]])
-  unique <- length( unique(intel_data[[i]]))
-  mode <- Mode(intel_data[[i]])
-  freq <- attr(mode,"freq")
-  summary_categorical_table <- cbind(summary_categorical_table,new_col=c(count,unique,mode,freq))
-}
-colnames(summary_categorical_table) <- c("",categorical_cols)
+### Vẽ biểu đồ
+##############
+histogram_bplot <- function(intel_data, col, na.rm = T) { 
+  par(mfrow = c(1,2))
+  
+  hist(intel_data[[col]],
+       main = paste("Histogram of", col),
+       xlab = col)
+  
+  boxplot(intel_data[[col]],
+          main = paste("Boxplot of", col),
+          horizontal = T,
+          xlab = col,
+          ylab = "",
+          las = 1)}
+histogram_bplot(intel_data,"Max_Memory_Size")
+histogram_bplot(intel_data,"Lithography")
+histogram_bplot(intel_data,"nb_of_Cores")
+histogram_bplot(intel_data,"nb_of_Threads")
+histogram_bplot(intel_data,"Cache_Size")
+
+  ## export result ----
 
 print(summary_numeric_table)
 print(summary_categorical_table)
