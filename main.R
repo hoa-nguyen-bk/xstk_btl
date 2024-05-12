@@ -398,8 +398,8 @@ test_data <- intel_data[-index,]
 lm_model <- lm(Launch_Date ~ ., data = train_data)
 lm_summary <- summary(lm_model)
 lm_summary
-y_train_pred <- predict(lm_model,intel_data=train_data,response = "Lauch_Date")
-y_test_pred <- predict(lm_model, intel_data=test_data,response = "Lauch_Date")
+y_train_pred <- predict(lm_model,newdata=train_data,response = "Lauch_Date")
+y_test_pred <- predict(lm_model, newdata=test_data,response = "Lauch_Date")
 # Đánh giá mô hình
 mse_train<- mse(y_train_pred,train_data$Launch_Date)
 mse_test<- mse(y_test_pred,test_data$Launch_Date)
