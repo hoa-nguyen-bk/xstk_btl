@@ -87,7 +87,7 @@ for (i in product_collect) {
   # nhóm dữ liệu thành các loại dòng chip hiện tại
   intel_data$Product_Collection <- ifelse(grepl(i, intel_data$Product_Collection), i, intel_data$Product_Collection)
 }
-intel_data$Product_Collection <- factor(intel_data$Product_Collection, levels = product_collect)
+intel_data$Product_Collection <- as.factor(intel_data$Product_Collection)
 
 ##LAUNCH DATE
 ##############
@@ -107,7 +107,7 @@ for (i in product_collect) {
   # nhóm dữ liệu thành các loại dòng chip hiện tại
   intel_data$Product_Collection <- ifelse(grepl(i, intel_data$Product_Collection), i, intel_data$Product_Collection)
 }
-intel_data$Product_Collection <- factor(intel_data$Product_Collection, levels = unique(intel_data$Product_Collection))
+intel_data$Product_Collection <- as.factor(intel_data$Product_Collection)
 ##LITHOGRAPHY
 ##############
 intel_data$Lithography<- na.locf(intel_data$Lithography) # fill theo forrward (theo năm trước đó)
@@ -145,12 +145,12 @@ intel_data$Cache_Type <- ifelse(intel_data$Cache_Type == "", "Normal", sub(" ","
 ##INSTRUCTION SET
 ##############
 intel_data$Instruction_Set <- na.fill(intel_data$Instruction_Set,"64-bit")   # 64-bit là mode value của các loại máy nên ta fill bằng mode
-intel_data$Instruction_Set <- factor(intel_data$Instruction_Set, levels = unique(intel_data$Instruction_Set))
+intel_data$Instruction_Set <- as.factor(intel_data$Instruction_Set)
 
 ## VERTICAL SEGMENT
 ##############
 ## Ta thấy không có dữ liệu NaN nên ta không cần xử lý NaN chỉ cần xử lý chuỗi thành factor
-intel_data$Vertical_Segment <- factor(intel_data$Vertical_Segment, levels = unique(intel_data$Vertical_Segment))
+intel_data$Vertical_Segment <- as.factor(intel_data$Vertical_Segment)
 
 ## Ta thấy không có dữ liệu NaN nên ta không cần xử lý NaN chỉ cần xử lý chuỗi thành factor
 ## PROCESSOR BASE FREQUENCY
@@ -245,6 +245,42 @@ histogram_bplot(intel_data,"Cache_Size")
 print(summary_numeric_table)
 print(summary_categorical_table)
 
+
+# THỐNG KÊ SUY DIỄN
+##############
+## Kiểm định giả thuyết
+anova <- aov(Launch_Date ~ ., data = intel_data)
+anova_summary <- summary(anova)
+anova_summary
+
+
+
+## Mô hình hồi quy
+index <- createDataPartition(intel_data$Launch_Date, p = 0.8, list = FALSE)
+train_data <- intel_data[index,]
+test_data <- intel_data[-index,]
+
+lm_model <- lm(Launch_Date ~ ., data = train_data)
+lm_summary <- summary(lm_model)
+lm_summary
+y_train_pred <- predict(lm_model,newdata=train_data,response = "Lauch_Date")
+y_test_pred <- predict(lm_model, newdata=test_data,response = "Lauch_Date")
+# Đánh giá mô hình
+mse_train<- mse(y_train_pred,train_data$Launch_Date)
+mse_test<- mse(y_test_pred,test_data$Launch_Date)
+mae_train <- mae(y_train_pred,train_data$Launch_Date)
+mae_test <- mae(y_test_pred,test_data$Launch_Date)
+metric <- data.frame(
+  variable = c("MSE","MSE","MAE","MAE"),
+  value = c(mse_train,mse_test, mae_train, mae_test),
+  type = c("train","test","train","test")
+)
+ggplot(metric,aes(x = variable, y = value,color = type,group=type)) +
+  geom_line() +
+  geom_point(size=4) +
+  labs(x = "", y = "Value", color = "Type")
+
+
 # VẼ ĐỒ THỊ MÔ TẢ
 ##############
 ## VẼ ĐỒ THỊ MÔ TẢ CHO DỮ LIỆU SỐ
@@ -285,6 +321,7 @@ noc_ld <-ggplot(intel_data, aes(x = Launch_Date, y = nb_of_Cores)) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE) +
   labs(x = "Launch Date", y = "Number of Cores")
+
 ### Number of Threads vs Launch Date
 noth_ld <- ggplot(intel_data, aes(x = Launch_Date, y = nb_of_Threads)) +
   geom_point() +
@@ -381,39 +418,6 @@ cor.test(intel_datalog$Max_Memory_Size, intel_datalog$Processor_Base_Frequency, 
 cor.test(intel_datalog$nb_of_Cores, intel_datalog$Processor_Base_Frequency, method = "pearson")
 cor.test(intel_datalog$nb_of_Threads, intel_datalog$Processor_Base_Frequency, method = "pearson")
 
-# THỐNG KÊ SUY DIỄN
-##############
-## Kiểm định giả thuyết
-anova <- aov(Launch_Date ~ ., data = intel_data)
-anova_summary <- summary(anova)
-anova_summary
-
-
-
-## Mô hình hồi quy
-index <- createDataPartition(intel_data$Launch_Date, p = 0.8, list = FALSE)
-train_data <- intel_data[index,]
-test_data <- intel_data[-index,]
-
-lm_model <- lm(Launch_Date ~ ., data = train_data)
-lm_summary <- summary(lm_model)
-lm_summary
-y_train_pred <- predict(lm_model,intel_data=train_data,response = "Lauch_Date")
-y_test_pred <- predict(lm_model, intel_data=test_data,response = "Lauch_Date")
-# Đánh giá mô hình
-mse_train<- mse(y_train_pred,train_data$Launch_Date)
-mse_test<- mse(y_test_pred,test_data$Launch_Date)
-mae_train <- mae(y_train_pred,train_data$Launch_Date)
-mae_test <- mae(y_test_pred,test_data$Launch_Date)
-metric <- data.frame(
-  variable = c("MSE","MSE","MAE","MAE"),
-  value = c(mse_train,mse_test, mae_train, mae_test),
-  type = c("train","test","train","test")
-)
-ggplot(metric,aes(x = variable, y = value,color = type,group=type)) +
-  geom_line() +
-  geom_point(size=4) +
-  labs(x = "", y = "Value", color = "Type")
 # export result
 ###############
 # export(intel_data_raw, here("data", "clean", "my_data.rds"))
